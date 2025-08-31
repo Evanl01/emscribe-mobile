@@ -1,37 +1,47 @@
 import Constants from 'expo-constants';
 
-// Environment configuration helper
+// Runtime environment helper - reads from build-time configuration
+// Configuration is defined in app.config.js (single source of truth)
 export const ENV = {
-  // Supabase configuration
+  // API Configuration
+  API_BASE_URL: Constants.expoConfig?.extra?.API_BASE_URL,
+  
+  // Supabase Configuration  
   SUPABASE_URL: Constants.expoConfig?.extra?.SUPABASE_URL,
   SUPABASE_ANON_KEY: Constants.expoConfig?.extra?.SUPABASE_ANON_KEY,
   
-  // API configuration
-  API_BASE_URL: Constants.expoConfig?.extra?.API_BASE_URL,
+  // Environment Detection
+  ENVIRONMENT: Constants.expoConfig?.extra?.ENVIRONMENT || 'development',
+  DEBUG_MODE: Constants.expoConfig?.extra?.DEBUG_MODE || false,
   
-  // Environment detection
-  NODE_ENV: Constants.expoConfig?.extra?.NODE_ENV,
-  IS_DEV: __DEV__,
-  IS_PRODUCTION: Constants.expoConfig?.extra?.NODE_ENV === 'production' || !__DEV__,
+  // Computed Environment Flags
+  get IS_DEV() { 
+    return this.ENVIRONMENT === 'development'; 
+  },
+  get IS_PRODUCTION() { 
+    return this.ENVIRONMENT === 'production'; 
+  },
+  get IS_STAGING() { 
+    return this.ENVIRONMENT === 'staging'; 
+  },
 };
 
-// Debug function to log environment variables (only in development)
+// Debug function - only logs in debug mode
 export const debugEnvironment = () => {
-  if (__DEV__) {
+  if (ENV.DEBUG_MODE) {
     console.log('[Environment] Configuration loaded:', {
-      SUPABASE_URL: ENV.SUPABASE_URL ? '✅ Present' : '❌ Missing',
-      SUPABASE_ANON_KEY: ENV.SUPABASE_ANON_KEY ? '✅ Present' : '❌ Missing',
+      ENVIRONMENT: ENV.ENVIRONMENT,
       API_BASE_URL: ENV.API_BASE_URL ? '✅ Present' : '❌ Missing',
-      NODE_ENV: ENV.NODE_ENV || 'undefined',
+      SUPABASE_URL: ENV.SUPABASE_URL ? '✅ Present' : '❌ Missing', 
+      SUPABASE_ANON_KEY: ENV.SUPABASE_ANON_KEY ? '✅ Present' : '❌ Missing',
+      DEBUG_MODE: ENV.DEBUG_MODE,
       IS_DEV: ENV.IS_DEV,
       IS_PRODUCTION: ENV.IS_PRODUCTION,
-      expoConfig: !!Constants.expoConfig,
-      extra: !!Constants.expoConfig?.extra,
     });
     
-    if (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY) {
+    if (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY || !ENV.API_BASE_URL) {
       console.warn('[Environment] ⚠️ Missing required environment variables!');
-      console.log('[Environment] Make sure your app.config.js has the correct values in the extra section');
+      console.log('[Environment] Check your app.config.js configuration');
     }
   }
 };

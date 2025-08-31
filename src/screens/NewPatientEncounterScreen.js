@@ -27,6 +27,7 @@ import ENV from '../utils/environment';
 import TestAudioPicker from '../components/TestAudioPicker';
 import * as FileSystem from 'expo-file-system';
 import * as Network from 'expo-network';
+import * as format from '../utils/format';
 
 const { width: screenWidth } = Dimensions.get('window');
 const config = getConfig();
@@ -49,6 +50,9 @@ const NewPatientEncounterScreen = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(null);
   const [isOnline, setIsOnline] = useState(true); // New: network status
+  const [showProcessingOverlay, setShowProcessingOverlay] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
+  const [ribbonStatus, setRibbonStatus] = useState(null);
   
   // Form data
   const [patientEncounterName, setPatientEncounterName] = useState('');
@@ -142,6 +146,41 @@ const NewPatientEncounterScreen = () => {
     deactivateKeepAwake();
   };
 
+  // Helper: determine if status should show processing overlay
+  const isProcessingStatus = (status) => {
+    const processingStatuses = [
+      'saving-locally',
+      'uploading-to-database', 
+      'starting-transcription',
+      'transcription complete',
+      'creating soap note'
+    ];
+    return processingStatuses.includes(status);
+  };
+
+  // Helper: show status (overlay for processing, ribbon for others)
+  const showStatus = (statusData) => {
+    setCurrentStatus(statusData);
+    
+    if (statusData && isProcessingStatus(statusData.status)) {
+      setProcessingMessage(statusData.message || statusData.status);
+      setShowProcessingOverlay(true);
+    } else if (statusData) {
+      // Show ribbon for non-processing statuses
+      setRibbonStatus(statusData);
+      // Auto-dismiss after 10 seconds
+      setTimeout(() => {
+        setRibbonStatus(null);
+      }, 10000);
+    }
+  };
+
+  // Helper: hide processing overlay
+  const hideProcessingOverlay = () => {
+    setShowProcessingOverlay(false);
+    setProcessingMessage('');
+  };
+
   // Save data to storage whenever it changes
   useEffect(() => {
     const saveData = async () => {
@@ -194,15 +233,9 @@ const NewPatientEncounterScreen = () => {
       if (!file) return;
 
       setIsUploading(true);
-      setCurrentStatus({ status: 'saving-locally', message: 'Saving audio file...' });
+      showStatus({ status: 'saving-locally', message: 'Saving audio file...' });
 
       const duration = await getAudioDuration(file.uri);
-      if (duration > 40 * 60) {
-        Alert.alert('File Too Long', 'Recording duration must be less than 40 minutes');
-        setIsUploading(false);
-        setCurrentStatus(null);
-        return;
-      }
 
       // Check if we already have a local recording (offline limit: 1 recording)
       if (localRecordingPath) {
@@ -222,7 +255,7 @@ const NewPatientEncounterScreen = () => {
           ]
         );
         setIsUploading(false);
-        setCurrentStatus(null);
+        hideProcessingOverlay();
         return;
       }
 
@@ -231,7 +264,7 @@ const NewPatientEncounterScreen = () => {
       console.error('Error importing recording:', error);
       Alert.alert('Error', 'Failed to import recording');
       setIsUploading(false);
-      setCurrentStatus({ status: 'error', message: 'Import failed: ' + error.message });
+      showStatus({ status: 'error', message: 'Import failed: ' + error.message });
     }
   };
 
@@ -265,14 +298,14 @@ const NewPatientEncounterScreen = () => {
 
       setLocalRecordingPath(localPath);
       setRecordingFileMetadata(recordingMetadata);
-      setCurrentStatus({ status: 'saved-locally', message: 'Recording saved locally' });
+      showStatus({ status: 'saved-locally', message: 'Recording saved locally' });
       setIsUploading(false);
 
       console.log('Recording saved locally:', recordingMetadata);
     } catch (error) {
       console.error('Error saving recording locally:', error);
       setIsUploading(false);
-      setCurrentStatus({ status: 'error', message: 'Failed to save recording locally' });
+      showStatus({ status: 'error', message: 'Failed to save recording locally' });
       throw error;
     }
   };
@@ -318,7 +351,7 @@ const NewPatientEncounterScreen = () => {
         }
       }, 1000);
 
-      setCurrentStatus({ status: 'recording', message: 'Recording in progress...' });
+      showStatus({ status: 'recording', message: 'Recording in progress...' });
     } catch (error) {
       console.error('Error starting recording:', error);
       Alert.alert('Error', 'Failed to start recording. Please check microphone permissions.');
@@ -365,7 +398,7 @@ const NewPatientEncounterScreen = () => {
         return;
       }
 
-      setCurrentStatus({ status: 'saving-locally', message: 'Saving recording...' });
+      showStatus({ status: 'saving-locally', message: 'Saving recording...' });
       
       await saveRecordingLocally({
         uri: result.uri,
@@ -494,7 +527,7 @@ const NewPatientEncounterScreen = () => {
   const uploadRecording = async (recordingData) => {
     try {
       setIsUploading(true);
-      setCurrentStatus({ status: 'uploading-recording', message: 'Uploading recording...' });
+      showStatus({ status: 'uploading-recording', message: 'Uploading recording...' });
       
       let accessToken = await AuthService.getAccessToken();
       if (!accessToken) {
@@ -568,7 +601,7 @@ const NewPatientEncounterScreen = () => {
       } catch (e) {
         setIsUploading(false);
         console.error("Error decoding JWT or extracting user info:", e);
-        setCurrentStatus({ status: "error", message: "Invalid session" });
+        showStatus({ status: "error", message: "Invalid session" });
         Alert.alert("Invalid session", "Please log in again.");
         logout();
         return;
@@ -610,7 +643,7 @@ const NewPatientEncounterScreen = () => {
       const byteArray = new Uint8Array(byteNumbers);
 
       console.log('[uploadRecording] Starting upload to Supabase storage...');
-      setCurrentStatus({ status: 'uploading-recording', message: 'Uploading to cloud storage...' });
+      showStatus({ status: 'uploading-recording', message: 'Uploading to cloud storage...' });
 
       // Attempt upload with retry logic (matching web version)
       const uploadResult = await uploadWithRetry(filePath, byteArray);
@@ -624,7 +657,7 @@ const NewPatientEncounterScreen = () => {
       const { data: uploadData, error: uploadError } = uploadResult;
 
       if (uploadError || !uploadData || !uploadData?.path) {
-        setCurrentStatus({
+        showStatus({
           status: 'error',
           message: uploadError?.message || 'Upload failed',
         });
@@ -646,7 +679,7 @@ const NewPatientEncounterScreen = () => {
       // Store metadata and clear old recording file
       await patientEncounterStorage.saveRecordingFileMetadata(metadata);
       setRecordingFileMetadata(metadata);
-      setCurrentStatus({ status: 'success', message: 'Recording Ready' });
+      showStatus({ status: 'success', message: 'Recording Ready' });
       setIsUploading(false);
 
       console.log('[uploadRecording] Upload completed successfully:', metadata);
@@ -654,7 +687,7 @@ const NewPatientEncounterScreen = () => {
       console.error('[uploadRecording] Error uploading recording:', error);
       Alert.alert('Upload Error', error.message || 'Failed to upload recording');
       setIsUploading(false);
-      setCurrentStatus({ status: 'error', message: 'Upload failed: ' + error.message });
+      showStatus({ status: 'error', message: 'Upload failed: ' + error.message });
     }
   };
 
@@ -688,12 +721,15 @@ const NewPatientEncounterScreen = () => {
     setActiveSection('review');
 
     let timeoutId;
+    let soapCreationTimer; // Declare the timer variable
     const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
     try {
       timeoutId = setTimeout(() => {
         setIsProcessing(false);
-        setCurrentStatus({
+        hideProcessingOverlay();
+        clearTimeout(soapCreationTimer); // Clear artificial timer on timeout
+        showStatus({
           status: 'error',
           message: 'Request timed out after 3 minutes. Please try again.',
         });
@@ -705,7 +741,7 @@ const NewPatientEncounterScreen = () => {
       // If we have a local recording, upload it first
       if (localRecordingPath && recordingFileMetadata?.isLocal) {
         console.log('[SOAP] Uploading local recording before processing...');
-        setCurrentStatus({ status: 'uploading-to-database', message: 'Saving recording to database...' });
+        showStatus({ status: 'uploading-to-database', message: 'Saving recording to database...' });
         
         recordingPath = await uploadLocalRecordingToSupabase();
         if (!recordingPath) {
@@ -718,12 +754,19 @@ const NewPatientEncounterScreen = () => {
         throw new Error('No recording available for processing');
       }
 
-      setCurrentStatus({ status: 'starting-transcription', message: 'Starting transcription...' });
+      showStatus({ status: 'starting-transcription', message: 'Starting transcription...' });
+
+      // Artificial timing for better UX in React Native (since SSE doesn't stream)
+      // After 1 minute, show SOAP creation status
+      soapCreationTimer = setTimeout(() => {
+        showStatus({ status: 'creating soap note', message: 'Creating SOAP note...' });
+      }, 60000); // 1 minute
 
       const accessToken = await AuthService.getAccessToken();
       if (!accessToken) {
         Alert.alert('Error', 'Please log in again');
         clearTimeout(timeoutId);
+        clearTimeout(soapCreationTimer);
         return;
       }
 
@@ -757,9 +800,13 @@ const NewPatientEncounterScreen = () => {
       const responseText = await response.text();
       console.log('[generateSoapNote] Full SSE response received, length:', responseText.length);
 
+      // Clear the artificial timer since we got the actual response
+      clearTimeout(soapCreationTimer);
+
       // Process SSE format - split by lines and parse each data line
       const lines = responseText.split('\n');
       
+      // Remove artificial delays since RN gets all data at once anyway
       for (const line of lines) {
         if (line.trim()) {
           try {
@@ -776,17 +823,37 @@ const NewPatientEncounterScreen = () => {
             
             if (jsonData) {
               console.log('[SSE] Processing line:', jsonData);
-              setCurrentStatus(jsonData);
               
-              if (jsonData.status === 'error') {
-                setCurrentStatus(jsonData);
+              // Check for server errors (statusCode 500 or status "error")
+              if (jsonData.statusCode === 500 || jsonData.error === 'error' || jsonData.status === 'error') {
+                console.error('[SSE] Error received:', jsonData);
+                clearTimeout(timeoutId);
+                clearTimeout(soapCreationTimer);
                 setIsProcessing(false);
-                throw new Error(jsonData.message || 'Streamed error received');
+                hideProcessingOverlay();
+                const errorMessage = jsonData.message || jsonData.error || 'Server error occurred';
+                Alert.alert('Processing Error', errorMessage);
+                showStatus({
+                  status: 'error',
+                  message: errorMessage,
+                });
+                return; // Exit the function early
+              }
+              
+              // Only show status for non-error messages
+              if (jsonData.status) {
+                showStatus(jsonData);
               }
               
               if (jsonData.status === 'transcription complete' && jsonData.data?.transcript) {
                 console.log('[SSE] Setting transcript:', jsonData.data.transcript.substring(0, 100) + '...');
                 setTranscript(jsonData.data.transcript);
+              }
+
+              if (jsonData.status === 'creating soap note') {
+                console.log('[SSE] Starting SOAP note generation...');
+                showStatus({ status: 'creating soap note', message: 'Starting SOAP note creation...' });
+                // Status will be shown by showStatus above
               }
               
               if (jsonData.status === 'soap note complete' && jsonData.data) {
@@ -803,33 +870,34 @@ const NewPatientEncounterScreen = () => {
                   noteObj = parsed.soap_note || {};
                   billingObj = parsed.billing || {};
 
-                  // Set SOAP sections directly
+                  // Set SOAP sections with proper formatting
                   let soapSubjectiveText = typeof noteObj.subjective === 'string'
                     ? noteObj.subjective
-                    : JSON.stringify(noteObj.subjective, null, 2);
+                    : format.printJsonObject(noteObj.subjective);
                   let soapObjectiveText = typeof noteObj.objective === 'string'
                     ? noteObj.objective
-                    : JSON.stringify(noteObj.objective, null, 2);
+                    : format.printJsonObject(noteObj.objective);
                   let soapAssessmentText = typeof noteObj.assessment === 'string'
                     ? noteObj.assessment
-                    : JSON.stringify(noteObj.assessment, null, 2);
+                    : format.printJsonObject(noteObj.assessment);
                   let soapPlanText = typeof noteObj.plan === 'string'
                     ? noteObj.plan
-                    : JSON.stringify(noteObj.plan, null, 2);
-                    
+                    : printJsonObject(noteObj.plan);
+
                   setSoapSubjective(soapSubjectiveText);
                   setSoapObjective(soapObjectiveText);
                   setSoapAssessment(soapAssessmentText);
                   setSoapPlan(soapPlanText);
 
-                  // Format billing suggestion for display
+                  // Format billing suggestion for display with proper formatting
                   let billingText = typeof billingObj === 'string'
                     ? billingObj
-                    : JSON.stringify(billingObj, null, 2);
+                    : format.printJsonObject(billingObj);
                   setBillingSuggestion(billingText.trim());
 
                   setIsProcessing(false);
-                  setCurrentStatus({ status: 'complete', message: 'SOAP note generated successfully!' });
+                  hideProcessingOverlay();
+                  showStatus({ status: 'complete', message: 'SOAP note generated successfully!' });
                   
                 } catch (e) {
                   console.error('Failed to parse SOAP note JSON:', e, jsonData.data);
@@ -852,6 +920,7 @@ const NewPatientEncounterScreen = () => {
       
     } catch (error) {
       clearTimeout(timeoutId);
+      clearTimeout(soapCreationTimer); // Also clear the artificial timer
       console.error('[generateSoapNote]: Error', error);
       
       const errorMsg = typeof error === 'string' ? error : error?.message || '';
@@ -862,11 +931,12 @@ const NewPatientEncounterScreen = () => {
       }
       
       Alert.alert('Processing Error', `Error generating SOAP note: ${errorMsg}`);
-      setCurrentStatus({
+      showStatus({
         status: 'error',
         message: `Failed to process recording: ${errorMsg}`,
       });
       setIsProcessing(false);
+      hideProcessingOverlay();
     }
   };
 
@@ -1011,7 +1081,7 @@ const NewPatientEncounterScreen = () => {
 
     } catch (error) {
       console.error('[uploadLocal] Error uploading local recording:', error);
-      setCurrentStatus({ 
+      showStatus({ 
         status: 'error', 
         message: 'Failed to upload recording. Your recording is saved locally - you can try again.' 
       });
@@ -1155,6 +1225,8 @@ const NewPatientEncounterScreen = () => {
     setSoapNoteRequested(false);
     setActiveSection('upload');
     setCurrentStatus(null);
+    hideProcessingOverlay();
+    setRibbonStatus(null);
     
     // Clean up local recording
     await deleteLocalRecording();
@@ -1254,26 +1326,19 @@ const NewPatientEncounterScreen = () => {
               <Text style={styles.importButtonIcon}>📁</Text>
               <Text style={styles.importButtonText}>Select Audio File</Text>
               <Text style={styles.importButtonSubtext}>
-                MP3, M4A, WAV (Max 50MB, 40 min)
+                MP3, M4A, WAV (Max 50MB)
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Status and Generate Button */}
-          {(recordingFileMetadata || localRecordingPath || currentStatus) && (
+          {(recordingFileMetadata || localRecordingPath) && (
             <View style={styles.statusSection}>
-              {currentStatus && (
-                <View style={[
-                  styles.statusContainer,
-                  currentStatus.status === 'error' ? styles.errorStatus : 
-                  currentStatus.status === 'saved-locally' ? styles.localStatus : styles.successStatus
-                ]}>
-                  <Text style={styles.statusText}>{currentStatus.message}</Text>
-                  {!isOnline && localRecordingPath && (
-                    <Text style={styles.offlineText}>
-                      ⚠️ Offline mode - recording saved locally
-                    </Text>
-                  )}
+              {!isOnline && localRecordingPath && (
+                <View style={[styles.statusContainer, styles.localStatus]}>
+                  <Text style={styles.offlineText}>
+                    ⚠️ Offline mode - recording saved locally
+                  </Text>
                 </View>
               )}
 
@@ -1416,9 +1481,45 @@ const NewPatientEncounterScreen = () => {
           {renderUploadSection()}
           {renderReviewSection()}
         </ScrollView>
+        {renderProcessingOverlay()}
+        {renderStatusRibbon()}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+
+  function renderProcessingOverlay() {
+    if (!showProcessingOverlay) return null;
+    
+    return (
+      <View style={styles.processingOverlay}>
+        <View style={styles.processingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" style={styles.processingSpinner} />
+          <Text style={styles.processingMessage}>{processingMessage}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  function renderStatusRibbon() {
+    if (!ribbonStatus) return null;
+    
+    return (
+      <View style={[
+        styles.statusRibbon,
+        ribbonStatus.status === 'error' ? styles.errorRibbon : 
+        ribbonStatus.status === 'success' || ribbonStatus.status === 'complete' || ribbonStatus.status === 'saved-locally' ? styles.successRibbon : 
+        styles.infoRibbon
+      ]}>
+        <Text style={styles.ribbonText}>{ribbonStatus.message}</Text>
+        <TouchableOpacity 
+          style={styles.ribbonCloseButton} 
+          onPress={() => setRibbonStatus(null)}
+        >
+          <Text style={styles.ribbonCloseText}>×</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
@@ -1674,6 +1775,79 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  processingContainer: {
+    backgroundColor: '#fff',
+    padding: 30,
+    borderRadius: 12,
+    alignItems: 'center',
+    minWidth: 200,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  processingSpinner: {
+    marginBottom: 16,
+  },
+  processingMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  // Status ribbon styles
+  statusRibbon: {
+    position: 'absolute',
+    bottom: 100,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    maxWidth: 250,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    zIndex: 999,
+  },
+  successRibbon: {
+    backgroundColor: '#fff',
+  },
+  errorRibbon: {
+    backgroundColor: '#fff',
+  },
+  infoRibbon: {
+    backgroundColor: '#fff',
+  },
+  ribbonText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  ribbonCloseButton: {
+    marginLeft: 8,
+    paddingHorizontal: 4,
+  },
+  ribbonCloseText: {
+    color: '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

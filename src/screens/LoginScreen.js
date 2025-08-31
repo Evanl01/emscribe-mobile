@@ -51,7 +51,7 @@ const LoginScreen = () => {
 
   const handleSignUp = () => {
     // TODO: Navigate to sign up screen or show sign up modal
-    Alert.alert('Sign Up', 'Sign up functionality will be implemented soon.');
+    Alert.alert('Sign Up', 'Sign up functionality coming soon. For now, you can create an account at https://emscribe.vercel.app/signup.');
   };
 
   return (
