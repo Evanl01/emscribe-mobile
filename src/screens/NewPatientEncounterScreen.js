@@ -882,7 +882,7 @@ const NewPatientEncounterScreen = () => {
                     : format.printJsonObject(noteObj.assessment);
                   let soapPlanText = typeof noteObj.plan === 'string'
                     ? noteObj.plan
-                    : printJsonObject(noteObj.plan);
+                    : format.printJsonObject(noteObj.plan);
 
                   setSoapSubjective(soapSubjectiveText);
                   setSoapObjective(soapObjectiveText);
