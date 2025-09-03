@@ -1,0 +1,16 @@
+{
+  "build": {
+    "production": {
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "ios": {},
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  },
+  "cli": {
+    "appVersionSource": "remote"
+  }
+}

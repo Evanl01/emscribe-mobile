@@ -2,16 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Storage keys for the mobile app
 export const STORAGE_KEYS = {
-  patientEncounterName: 'emscribe_mobile_patientEncounterName',
-  transcript: 'emscribe_mobile_transcript',
-  soapSubjective: 'emscribe_mobile_soapSubjective',
-  soapObjective: 'emscribe_mobile_soapObjective',
-  soapAssessment: 'emscribe_mobile_soapAssessment',
-  soapPlan: 'emscribe_mobile_soapPlan',
-  billingSuggestion: 'emscribe_mobile_billingSuggestion',
-  recordingFileMetadata: 'emscribe_mobile_recordingFileMetadata',
-  recordingFile: 'emscribe_mobile_recordingFile',
-  localRecordingPath: 'emscribe_mobile_localRecordingPath', // New: local file path
+  patientEncounterName: 'enscribe_patientEncounterName',
+  transcript: 'enscribe_transcript',
+  soapSubjective: 'enscribe_soapSubjective',
+  soapObjective: 'enscribe_soapObjective',
+  soapAssessment: 'enscribe_soapAssessment',
+  soapPlan: 'enscribe_soapPlan',
+  billingSuggestion: 'enscribe_billingSuggestion',
+  recordingFileMetadata: 'enscribe_recordingFileMetadata',
+  recordingFile: 'enscribe_recordingFile',
+  localRecordingPath: 'enscribe_localRecordingPath', // New: local file path
 };
 
 // Storage utility functions

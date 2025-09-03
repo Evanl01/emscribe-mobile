@@ -12,41 +12,46 @@ const envConfig = {
   }
 };
 
+// Debug: Log the environment and API URL during build
+console.log(`🔧 BUILD TIME - Environment: ${environment}`);
+console.log(`🔧 BUILD TIME - API_BASE_URL: ${envConfig[environment].API_BASE_URL}`);
+
 export default {
   expo: {
-    name: 'EmScribe Mobile',
-    slug: 'emscribe-mobile',
+    name: 'Enscribe',
+    slug: 'enscribe-mobile',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/icon.png',
+    icon: './assets/emscribe-icon128.png',
     userInterfaceStyle: 'light',
     newArchEnabled: true,
     splash: {
-      image: './assets/splash-icon.png',
+      image: './assets/emscribe-icon128.png', // Updated to use the Enscribe icon
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
     assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.emscribe.mobile',
+      bundleIdentifier: 'com.enscribe.app', // Updated to match the App Store Connect record
       infoPlist: {
         NSMicrophoneUsageDescription: 'This app needs microphone access to record patient encounters.',
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
+        foregroundImage: './assets/emscribe-icon128.png',
         backgroundColor: '#ffffff',
       },
       edgeToEdgeEnabled: true,
-      package: 'com.emscribe.mobile',
+      package: 'com.enscribe.app.001', // Ensure this matches your Android application ID
     },
     web: {
       favicon: './assets/favicon.png',
     },
     plugins: ['expo-secure-store'],
-    scheme: 'emscribe',
+    scheme: 'enscribe',
     extra: {
       // Environment-specific configuration
       ...envConfig[environment],
@@ -58,7 +63,7 @@ export default {
       
       // EAS Build configuration
       eas: {
-        projectId: 'your-project-id', // Add this later if using EAS Build
+        projectId: '3651b250-fe25-4a3d-878a-2a59094454e2',
       },
     },
   },

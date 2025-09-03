@@ -1,6 +1,8 @@
-# EmScribe Mobile
+# Enscribe
 
-A mobile iOS app for transcribing patient encounters using React Native and Expo.
+Ambient Listening of Medical Patient Encounters to be transcribed and summarized into a note (SOAP note, BIRP note, Progress note...).  
+
+Per HIPAA compliance, all steps of the app are designed to protect patient's Protected Health Information. Any PHI patient data is transmitted via HTTPS to ensure encryption in transit, and also encrypted before storing in database.
 
 ## Features
 

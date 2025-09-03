@@ -11,6 +11,7 @@ import {
   Platform,
   SafeAreaView,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = () => {
@@ -61,7 +62,7 @@ const LoginScreen = () => {
         style={styles.keyboardView}
       >
         <View style={styles.loginContainer}>
-          <Text style={styles.title}>EmScribe Login</Text>
+          <Text style={styles.title}>Enscribe Login</Text>
           
           <View style={styles.inputContainer}>
             <TextInput
@@ -110,6 +111,11 @@ const LoginScreen = () => {
               <Text style={styles.loginButtonText}>Login</Text>
             )}
           </TouchableOpacity>
+          
+          {/* Debug: Show API Base URL and Environment */}
+          <Text style={styles.debugText}>
+            ENV: {Constants.expoConfig?.extra?.ENVIRONMENT || 'Unknown'} | API: {Constants.expoConfig?.extra?.API_BASE_URL || 'Not configured'}
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -180,6 +186,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  debugText: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 16,
   },
 });
 
