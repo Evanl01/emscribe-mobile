@@ -4,6 +4,125 @@ Ambient Listening of Medical Patient Encounters to be transcribed and summarized
 
 Per HIPAA compliance, all steps of the app are designed to protect patient's Protected Health Information. Any PHI patient data is transmitted via HTTPS to ensure encryption in transit, and also encrypted before storing in database.
 
+## 🏗️ Configuration Architecture
+
+This app uses a multi-layered configuration system to ensure environment settings work correctly across development, production, and native builds.
+
+### 📋 Configuration Flow & Reading Order
+
+#### **🚀 Phase 1: Build Time (Script Execution)**
+
+**Step 1: 📦 [`package.json`](package.json) Scripts**
+```bash
+npm run xcode:prod
+# Executes: cross-env NODE_ENV=production node generate-config.js && expo prebuild --clean
+```
+- Sets `NODE_ENV=production` environment variable
+- Triggers configuration generation
+
+**Step 2: 🔧 [`generate-config.js`](generate-config.js)**
+```javascript
+const environment = process.env.NODE_ENV || 'development';
+```
+- ✅ **Reads**: `process.env.NODE_ENV` (from package.json script)
+- ✅ **Uses**: Internal `envConfig` object with environment-specific settings
+- ✅ **Writes**: Creates `📄 src/utils/build-config.js` with resolved configuration
+
+**Step 3: ⚙️ [`app.config.js`](app.config.js)**
+```javascript
+const environment = process.env.NODE_ENV || 'development';
+```
+- ✅ **Reads**: Same `process.env.NODE_ENV` environment variable
+- ✅ **Uses**: Own internal `envConfig` object (⚠️ **duplicate** of generate-config.js)
+- ✅ **Purpose**: Configures Expo prebuild for native iOS/Android projects
+
+---
+
+#### **🏃 Phase 2: Runtime (App Execution)**
+
+**Step 4: 🌐 [`src/utils/environment.js`](src/utils/environment.js)**
+```javascript
+// Priority-based configuration loading
+const buildConfig = require('./build-config.js').BUILD_CONFIG;
+```
+**Reading Priority Chain:**
+1. 🥇 **Primary**: `📄 build-config.js` (generated at build time)
+2. 🥈 **Secondary**: `Constants.expoConfig.extra` (from app.config.js via Expo)
+3. 🥉 **Fallback**: Hardcoded default values
+
+**Step 5: 🔗 [`src/utils/config.js`](src/utils/config.js)**
+```javascript
+import { ENV } from './environment';
+```
+- ✅ **Reads**: ENV object from environment.js
+- ✅ **Adds**: Static API endpoints and timeout configurations
+- ✅ **Exports**: Combined configuration via `getConfig()` function
+
+**Step 6: 📱 React Components**
+```javascript
+import { ENV } from '../utils/environment';  // Direct import
+// OR
+import { getConfig } from '../utils/config';  // Via config wrapper
+```
+- ✅ **Components**: Import either ENV directly or use getConfig()
+- ✅ **Usage**: Access final resolved configuration values
+
+---
+
+### 🔄 Complete Data Flow Diagram
+
+```
+📦 package.json (NODE_ENV source)
+     ↓ sets environment variable
+🔧 generate-config.js 
+     ↓ reads NODE_ENV, writes file
+📄 build-config.js (generated)
+     ↓ imported at runtime
+🌐 environment.js (priority chain)
+     ↓ creates ENV object
+🔗 config.js (optional wrapper)
+     ↓ adds API endpoints
+📱 React Components
+     ↓ import configuration
+👤 User sees final config
+```
+
+**Parallel Expo Path:**
+```
+📦 package.json (NODE_ENV source)
+     ↓ sets environment variable  
+⚙️ app.config.js
+     ↓ reads NODE_ENV
+🏗️ expo prebuild
+     ↓ configures native projects
+📱 Native iOS/Android builds
+```
+
+---
+
+### 🎯 Key Configuration Files
+
+| File | Icon | Purpose | Reads From | Writes To |
+|------|------|---------|------------|-----------|
+| `package.json` | 📦 | Environment source | User commands | `NODE_ENV` variable |
+| `generate-config.js` | 🔧 | Build-time config | `NODE_ENV` | `build-config.js` |
+| `app.config.js` | ⚙️ | Expo configuration | `NODE_ENV` | Expo prebuild |
+| `build-config.js` | 📄 | Generated runtime config | Generated file | JavaScript imports |
+| `environment.js` | 🌐 | Runtime environment | `build-config.js` + fallbacks | ENV object |
+| `config.js` | 🔗 | API configuration | `environment.js` | getConfig() function |
+| React Components | 📱 | App interface | `environment.js` or `config.js` | User interface |
+
+---
+
+### 🔧 Environment Scripts
+
+- **Development**: `npm run start:dev` - Uses local development API
+- **Production**: `npm run start:prod` - Uses production API with Expo
+- **Xcode Development**: `npm run xcode:dev` - Prepares development build for Xcode
+- **Xcode Production**: `npm run xcode:prod` - Prepares production build for Xcode
+
+---
+
 ## Features
 
 - **Secure Authentication**: JWT token-based authentication with refresh token support

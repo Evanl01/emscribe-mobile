@@ -11,7 +11,7 @@ import {
   Platform,
   SafeAreaView,
 } from 'react-native';
-import Constants from 'expo-constants';
+import { ENV } from '../utils/environment';
 import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = () => {
@@ -112,10 +112,23 @@ const LoginScreen = () => {
             )}
           </TouchableOpacity>
           
-          {/* Debug: Show API Base URL and Environment */}
-          <Text style={styles.debugText}>
-            ENV: {Constants.expoConfig?.extra?.ENVIRONMENT || 'Unknown'} | API: {Constants.expoConfig?.extra?.API_BASE_URL || 'Not configured'}
-          </Text>
+          {/* Debug: Show API Base URL and Environment - Development Only */}
+          {ENV.IS_DEV && (
+            <View style={styles.debugContainer}>
+              <Text style={styles.debugText}>
+                🔥 DEBUG BUILD TEST 🔥
+              </Text>
+              <Text style={styles.debugText}>
+                ENV: {ENV.ENVIRONMENT}
+              </Text>
+              <Text style={styles.debugText}>
+                API: {ENV.API_BASE_URL}
+              </Text>
+              <Text style={styles.debugText}>
+                DEBUG_MODE: {ENV.DEBUG_MODE ? 'YES' : 'NO'}
+              </Text>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -192,6 +205,12 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 16,
+  },
+  debugContainer: {
+    backgroundColor: '#ffeb3b',
+    padding: 10,
+    marginTop: 20,
+    borderRadius: 5,
   },
 });
 

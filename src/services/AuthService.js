@@ -11,6 +11,10 @@ class AuthService {
       const payload = { action: 'sign-in', email, password };
       const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
+      console.log('🚨 CRITICAL - ACTUAL API CALL DETAILS:');
+      console.log('🚨 config.BASE_URL:', config.BASE_URL);
+      console.log('🚨 Full URL being called:', url);
+      console.log('🚨 config object:', config);
       console.debug('[AuthService] login -> URL:', url);
       console.debug('[AuthService] login -> payload:', payload);
       console.debug('[AuthService] login -> headers:', headers);

@@ -8,6 +8,13 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "development": {
+      "developmentClient": true, 
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development"
+      }
     }
   },
   "cli": {

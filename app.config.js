@@ -12,10 +12,6 @@ const envConfig = {
   }
 };
 
-// Debug: Log the environment and API URL during build
-console.log(`🔧 BUILD TIME - Environment: ${environment}`);
-console.log(`🔧 BUILD TIME - API_BASE_URL: ${envConfig[environment].API_BASE_URL}`);
-
 export default {
   expo: {
     name: 'Enscribe',
@@ -45,7 +41,7 @@ export default {
         backgroundColor: '#ffffff',
       },
       edgeToEdgeEnabled: true,
-      package: 'com.enscribe.app.001', // Ensure this matches your Android application ID
+      package: 'com.enscribe.app', // Fixed: removed invalid .001 suffix
     },
     web: {
       favicon: './assets/favicon.png',
@@ -65,6 +61,16 @@ export default {
       eas: {
         projectId: '3651b250-fe25-4a3d-878a-2a59094454e2',
       },
+    },
+    // Alternative: Add configuration directly to expo root level
+    updates: {
+      url: envConfig[environment].API_BASE_URL,
+    },
+    // Force Expo to include our config
+    _internal: {
+      isDebug: envConfig[environment].DEBUG_MODE,
+      environment: environment,
+      apiBaseUrl: envConfig[environment].API_BASE_URL,
     },
   },
 };

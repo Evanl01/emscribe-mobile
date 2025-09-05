@@ -166,6 +166,10 @@ const NewPatientEncounterScreen = () => {
       setProcessingMessage(statusData.message || statusData.status);
       setShowProcessingOverlay(true);
     } else if (statusData) {
+      // Hide processing overlay for non-processing statuses
+      setShowProcessingOverlay(false);
+      setProcessingMessage('');
+      
       // Show ribbon for non-processing statuses
       setRibbonStatus(statusData);
       // Auto-dismiss after 10 seconds
@@ -1292,7 +1296,7 @@ const NewPatientEncounterScreen = () => {
             <Text style={styles.subsectionTitle}>Import Audio File</Text>
             
             {/* Test Audio Picker for Simulator */}
-            {__DEV__ && (
+            {ENV.IS_DEV && (
               <TestAudioPicker onAudioSelected={async (file) => {
                 // Use the same local-first workflow for test files
                 const duration = await getAudioDuration(file.uri);
